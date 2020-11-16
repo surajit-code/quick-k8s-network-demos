@@ -1,0 +1,78 @@
+# Examples here demonstrate pushing configmap as envirnment variables
+# and as files mounted in desired location with desired filenames
+
+# Note: if configmap value changes during the life of a pod, it's change
+# will be reflected in the pod after a time
+# if configmap is pushed as a file, the changes will not be reflected till
+# the pod is reapplied
+
+# Create a tcp server pod with 2 configmaps, 1 as a environment variable
+# and a volume backed configmap
+kubectl apply -f alp-volume-configmap.yaml
+kubectl apply -f alp-env-configmap.yam
+kubectl apply -f alpine-pyserv-service-clip.yaml #This time configure clusterIP service with static IP 10.96.0.100
+kubectl apply -f alpine-pyserver-deployment.yaml
+
+# Get stdouts of the tcp server pod
+   kubectl logs apline-pys-deployment-<pod-hash> -c alpserver -n quick-test --tail 4 -f
+
+#Login to the tcp server pod and run the following commands to see configmaps reflected
+kubectl exec -it apline-pys-deployment-<pod-hash> -n quick-test -- bash
+
+  # bash-5.0# printenv | grep TCP_PORT
+  # TCP_PORT=5000
+
+  # bash-5.0# netstat -nap | grep 5000
+  # tcp        0      0 0.0.0.0:5000            0.0.0.0:*               LISTEN      1/python
+  # bash-5.0#
+  # bash-5.0# ls /usr/share/
+  # someFile.conf
+  # bash-5.0# cat /usr/share/someFile.conf
+  # input {
+  #   tcp {
+  #     port => 7000
+  #     type => syslog
+
+
+# Create a tcp client pod with 1 configmap as a environment variable
+kubectl apply -f alp-env2-configmap.yaml
+kubectl apply -f alpine-pyclient-deployment.yaml
+#Login to the tcp client pod and run the following commands to see configmaps reflected
+kubectl exec -it apline-pyc-deployment-<pod-hash> -n quick-test -- bash
+
+
+  # bash-5.0# printenv | grep TCP_PORT
+  # TCP_PORT=7000
+  # KUBERNETES_PORT_443_TCP_PORT=443
+  # bash-5.0# printenv | grep TCP_SERVER_IP
+  # TCP_SERVER_IP=alpine-pyserv
+  # bash-5.0# nslookup alpine-pyserv
+  # Server:		10.96.0.10
+  # Address:	10.96.0.10:53
+  # ** server can't find alpine-pyserv.cluster.local: NXDOMAIN
+  # Name:	alpine-pyserv.quick-test.svc.cluster.local
+  # Address: 10.96.0.100
+  # ** server can't find alpine-pyserv.svc.cluster.local: NXDOMAIN
+  # ** server can't find alpine-pyserv.cluster.local: NXDOMAIN
+  # ** server can't find alpine-pyserv.svc.cluster.local: NXDOMAIN
+
+  # bash-5.0# ./tcp-client.py
+  # 7000
+  # alpine-pyserv
+  # connecting to alpine-pyserv port 7000
+  # sending "This is the message.  It will be repeated."
+  # received "This is the mess"
+  # received "age.  It will be"
+  # received " repeated."
+  # closing socket
+  # bash-5.0#
+
+
+# Cleanup
+kubectl delete -f alp-env-configmap.yaml
+kubectl delete -f alp-volume-configmap.yaml
+kubectl delete -f alpine-pyserver-deployment.yaml
+kubectl delete -f alpine-pyserv-service-clip.yaml
+
+kubectl delete -f alp-env2-configmap.yaml
+kubectl delete -f alpine-pyclient-deployment.yaml

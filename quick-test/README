@@ -1,12 +1,10 @@
+# These are a bare minimum commands required to get started with the tests
 kubectl apply -f quick-test-namespace.yaml
 kubectl label nodes k8s-worker-1 testcapability=testnode
-kubectl apply -f alpine-pyserver-deployment.yaml
-kubectl apply -f alpine-pyclient-deployment.yaml
-kubectl apply -f alpine-pyserv-service.yaml
 
-kubectl get pods -n quick-test -o wide
-kubectl get svc alpine-pyserv -n quick-test -o wide
-kubectl describe svc alpine-pyserv -n quick-test
+# Before running pods, please clone this repo in the first worker node and
+# create the required docker image by running the instructions in image/README
 
-
-kubectl logs apline-pys-deployment-655d7f9c77-z7s2f -n quick-test --tail 4 -f
+# Go to headless-service-test directory to try out headless service discovery test
+# Go to tcp-service-test directory to try out TCP ClusterIP sercvice test
+# Go to configmap directory to try out various ways of pushing config details to containers

@@ -12,6 +12,9 @@
     ping quickserv-host.quickserv-subdomain.quick-test.svc.cluster.local -c1
     /tcp-client.py
 
+# Get stdouts of the tcp server pod
+   kubectl logs apline-pys-deployment-<pod-hash> -c alpserver -n quick-test --tail 4 -f
+
 # Cleanup
   kubectl delete -f alpine-pyserver-deployment.yaml
   kubectl delete -f alpine-pyclient-deployment.yaml

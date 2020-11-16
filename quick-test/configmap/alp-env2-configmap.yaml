@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alp-env2-test
+  namespace: quick-test
+data:
+  SRJ_TCP_SVC_URL: "alpine-pyserv"

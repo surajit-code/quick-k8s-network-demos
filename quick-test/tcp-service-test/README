@@ -11,9 +11,11 @@
   kubectl get pods -n quick-test -o wide
  
 #login to the python tcp client pod and run the following to verify name resolution and connection is working
-  kubectl exec -it apline-pyc-deployment-<container hash> -n quick-test -- bash
+  kubectl exec -it apline-pyc-deployment-<pod-hash> -n quick-test -- bash
     nslookup alpine-pyserv
     /tcp-client.py
+# Get stdouts of the tcp server pod
+  kubectl logs apline-pys-deployment-<pod-hash> -c alpserver -n quick-test --tail 4 -f
 
 # Cleanup
   kubectl delete -f alpine-pyserver-deployment.yaml

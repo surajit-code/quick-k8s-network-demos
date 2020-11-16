@@ -1,0 +1,83 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  data:
+    someFile.conf: |
+      input {
+        tcp {
+          port => 7000
+          type => syslog
+        }
+        udp {
+          port => 7000
+          type => syslog
+        }
+        #snmptrap {
+        #  port =>1062
+        #  type => "snmptrap"
+        #}
+        udp {
+          port => 9996
+          codec => netflow {
+            versions => [5,9]
+          }
+          tags => "port_9996"
+        }
+        tcp {
+          port => 9996
+          codec => netflow {
+            versions => [5,9]
+          }
+          tags => "port_9996"
+        }
+      }
+
+      filter {
+        if [type] == "syslog" {
+          grok {
+            match => { "message" => "%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}" }
+            add_field => [ "received_at", "%{@timestamp}" ]
+
+            add_field => [ "received_from", "%{host}" ]
+          }
+          date {
+            match => [ "syslog_timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+          }
+        }
+      }
+
+      output {
+        if "port_9996" in [tags] {
+          elasticsearch {
+            hosts => ["http://srj-elastic-svc:9200"]
+            index => "logstash-netflow-9996-%{+YYYY.MM.dd}"
+          }
+          stdout {
+            codec => netflow
+          }
+        }
+
+        #if [type] == "snmptrap" {
+        #  stdout {
+        #    codec => json
+        #  }
+        #  elasticsearch {
+        #    index => "essnmp-%{+YYYY.MM.dd}"
+        #    hosts => ["http://srj-elastic-svc:9200"]
+        #  }
+
+        #}
+
+        if [type] == "syslog" {
+          kafka {
+            codec => json
+            topic_id => "my_syslog"
+            bootstrap_servers => "kafka:9092"
+          }
+        }
+      }
+  kind: ConfigMap
+  metadata:
+    name: config-file-alp-test
+    namespace: quick-test
+kind: List
