@@ -1,0 +1,55 @@
+#This sets up clusterIP service. This is a good choice for pod to pod comms
+#in the same k8s cluster
+
+# Create tcp server pod, it's headless service and the tcp client pod
+  kubectl apply -f alpine-pyserver-deployment.yaml
+  kubectl apply -f alpine-pyclient-deployment.yaml
+  kubectl apply -f alpine-pyserv-service-clip.yaml
+
+# View the pods and the headless services running
+  kubectl get svc -n quick-test -o wide
+  kubectl get pods -n quick-test -o wide
+ 
+#login to the python tcp client pod and run the following to verify name resolution and connection is working
+  kubectl exec -it apline-pyc-deployment-<container hash> -n quick-test -- bash
+    nslookup alpine-pyserv
+    /tcp-client.py
+
+# Cleanup
+  kubectl delete -f alpine-pyserver-deployment.yaml
+  kubectl delete -f alpine-pyclient-deployment.yaml
+  kubectl delete -f alpine-pyserv-service-clip.yaml
+
+# Some outputs explaining how the network communicates using iptables NAT entries
+  kubectl get pods -n quick-test -o wide | grep apline-pys-deployment
+    # apline-pys-deployment-655d7f9c77-w65w8   1/1     Running   0          4m19s   10.244.1.10   k8s-worker-1   <none>           <none>
+  kubectl describe svc alpine-pyserv -n quick-test
+    # Name:              alpine-pyserv
+    # Namespace:         quick-test
+    # Labels:            <none>
+    # Annotations:       kubectl.kubernetes.io/last-applied-configuration:
+    #                      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"alpine-pyserv","namespace":"quick-test"},"spec":{"ports":[{"port"...
+    # Selector:          app=alpserv-app
+    # Type:              ClusterIP
+    # IP:                10.108.16.109
+    # Port:              <unset>  7000/TCP
+    # TargetPort:        5000/TCP
+    # Endpoints:         10.244.1.10:5000
+    # Session Affinity:  None
+    # Events:            <none>
+
+    # iptable rules on the worker node that carries packets from one pod to another
+    iptables -S -t nat | grep 7000
+    # -A KUBE-SERVICES ! -s 10.244.0.0/16 -d 10.108.16.109/32 -p tcp -m comment --comment "quick-test/alpine-pyserv: cluster IP" -m tcp --dport 7000 -j KUBE-MARK-MASQ
+    # -A KUBE-SERVICES -d 10.108.16.109/32 -p tcp -m comment --comment "quick-test/alpine-pyserv: cluster IP" -m tcp --dport 7000 -j KUBE-SVC-LP7RGGFJHMX3QXWB
+    iptables -S -t nat | grep 5000
+    # -A KUBE-SEP-CYFKLXH5DLZWFSS5 -p tcp -m tcp -j DNAT --to-destination 10.244.1.10:5000
+    iptables -S -t nat | grep KUBE-MARK-MASQ
+    # -A KUBE-SEP-CYFKLXH5DLZWFSS5 -s 10.244.1.10/32 -j KUBE-MARK-MASQ
+    iptables -S -t nat | grep KUBE-SVC-LP7RGGFJHMX3QXWB
+    # -A KUBE-SERVICES -d 10.108.16.109/32 -p tcp -m comment --comment "quick-test/alpine-pyserv: cluster IP" -m tcp --dport 7000 -j KUBE-SVC-LP7RGGFJHMX3QXWB
+    # -A KUBE-SVC-LP7RGGFJHMX3QXWB -j KUBE-SEP-CYFKLXH5DLZWFSS5
+    iptables -S -t nat | grep KUBE-SEP-CYFKLXH5DLZWFSS5
+    # -A KUBE-SEP-CYFKLXH5DLZWFSS5 -s 10.244.1.10/32 -j KUBE-MARK-MASQ
+    # -A KUBE-SEP-CYFKLXH5DLZWFSS5 -p tcp -m tcp -j DNAT --to-destination 10.244.1.10:5000
+    

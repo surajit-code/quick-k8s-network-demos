@@ -11,3 +11,7 @@
     nslookup quickserv-host.quickserv-subdomain.quick-test.svc.cluster.local
     ping quickserv-host.quickserv-subdomain.quick-test.svc.cluster.local -c1
     /tcp-client.py
+
+# Cleanup
+  kubectl delete -f alpine-pyserver-deployment.yaml
+  kubectl delete -f alpine-pyclient-deployment.yaml

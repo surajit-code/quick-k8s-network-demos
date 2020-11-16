@@ -1,0 +1,14 @@
+#This works for container to container
+#Simple cluster IP
+apiVersion: v1
+kind: Service
+metadata:
+  name: alpine-pyserv
+  namespace: quick-test
+spec:
+  ports:
+    - protocol : TCP
+      port: 7000
+      targetPort: 5000
+  selector:
+    app: alpserv-app
