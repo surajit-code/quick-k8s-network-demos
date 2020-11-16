@@ -1,7 +1,7 @@
 #This sets up clusterIP service. This is a good choice for pod to pod comms
 #in the same k8s cluster
 
-# Create tcp server pod, it's headless service and the tcp client pod
+# Create tcp server pod and the tcp client pod
   kubectl apply -f alpine-pyserver-deployment.yaml
   kubectl apply -f alpine-pyclient-deployment.yaml
   kubectl apply -f alpine-pyserv-service-clip.yaml
