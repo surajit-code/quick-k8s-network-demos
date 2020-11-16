@@ -1,0 +1,12 @@
+kubectl apply -f quick-test-namespace.yaml
+kubectl label nodes k8s-worker-1 testcapability=testnode
+kubectl apply -f alpine-pyserver-deployment.yaml
+kubectl apply -f alpine-pyclient-deployment.yaml
+kubectl apply -f alpine-pyserv-service.yaml
+
+kubectl get pods -n quick-test -o wide
+kubectl get svc alpine-pyserv -n quick-test -o wide
+kubectl describe svc alpine-pyserv -n quick-test
+
+
+kubectl logs apline-pys-deployment-655d7f9c77-z7s2f -n quick-test --tail 4 -f

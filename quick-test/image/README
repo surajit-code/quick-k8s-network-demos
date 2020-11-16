@@ -1,0 +1,56 @@
+#Image build step
+  docker build -f ./Dockerfile -t alpine/python:1 .
+
+#Command to test run a simple TCP server container
+  docker run --name alpine-pyts --hostname alpine-pyts \
+       --env TCP_PORT=5000 \
+       --privileged \
+       -d alpine/python:1 /tcp-server.py
+
+  # Container shell access
+    docker exec -it alpine-pyts bash
+
+#Command to test run a simple TCP client container
+  docker run --name alpine-pytc --hostname alpine-pytc \
+       --env TCP_SERVER_IP=172.17.0.2 \
+       --env TCP_PORT=5000 \
+       --privileged \
+       -d alpine/python:1 tail -F /dev/null
+
+  # Container shell access
+    docker exec -it alpine-pytc bash
+
+#Cleanup commands for tcp server/client docker containers
+  docker stop alpine-pytc;
+  docker stop alpine-pyts;
+  docker rm alpine-pytc;
+  docker rm alpine-pyts;
+
+#Command to test run a simple UDP server container
+  docker run --name alpine-pyudps --hostname alpine-pyudps \
+       --env UDP_PORT=6000 \
+       --privileged \
+       -d alpine/python:1 /udp-server.py
+
+  # Container shell access
+    docker exec -it alpine-pyudps bash
+
+#Command to test run a simple UDP client container
+  docker run --name alpine-pyudpc --hostname alpine-pyudpc \
+       --env UDP_SERVER_IP=172.17.0.2 \
+       --env UDP_PORT=6000 \
+       --privileged \
+       -d alpine/python:1 tail -F /dev/null
+
+  # Container shell access
+    docker exec -it alpine-pyudpc bash
+
+#Cleanup commands for udp server/client docker containers
+  docker stop alpine-pyudps;
+  docker stop alpine-pyudpc;
+  docker rm alpine-pyudps;
+  docker rm alpine-pyudpc;
+
+#Commands to cleanup images
+  docker rmi alpine/python:1
+  docker rmi alpine:3.11.6

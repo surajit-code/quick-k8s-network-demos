@@ -1,0 +1,8 @@
+#Some test commands
+#http2 messaging
+  nghttp -nv https://www.google.com
+#http messaging
+  curl -X GET www.google.com
+#DNS name resolution
+  nslookup google.com
+
