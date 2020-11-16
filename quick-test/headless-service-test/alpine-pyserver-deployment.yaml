@@ -31,35 +31,12 @@ spec:
       hostname: quickserv-host       #This is for direct pod access through kube-dns using headless service
       subdomain: quickserv-subdomain #This is for direct pod access through kube-dns using headless service
 
-      volumes:
-      - name: alpcfgmap-test-mount
-        configMap:
-          name: config-file-alp-test
-
       containers:
       - name: alpserver
         image: alpine/python:1
         imagePullPolicy: IfNotPresent
-        #ports:
-        #- containerPort: 5000
-
-        volumeMounts:
-        - name: alpcfgmap-test-mount
-          mountPath: /usr/share/
 
         env:
-        - name: ALP_AAA_MODE
-          valueFrom:
-            configMapKeyRef:
-              name: alp-env-test
-              key: AAA_MODE
-
-        - name: ALP_AAA_MODE_2
-          valueFrom:
-            configMapKeyRef:
-              name: alp-env2-test
-              key: AAA_MODE_SECONDARY
-
         - name: TCP_PORT
           value: "5000"
 

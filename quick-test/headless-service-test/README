@@ -1,0 +1,13 @@
+# Create tcp server pod, it's headless service and the tcp client pod
+  kubectl apply -f alpine-pyserver-deployment.yaml
+  kubectl apply -f alpine-pyclient-deployment.yaml
+
+# View the pods and the headless services running
+  kubectl get svc -n quick-test -o wide
+  kubectl get pods -n quick-test -o wide
+ 
+#login to the python tcp client pod and run the following to verify name resolution and connection is working
+  kubectl exec -it apline-pyc-deployment-<container hash> -n quick-test -- bash
+    nslookup quickserv-host.quickserv-subdomain.quick-test.svc.cluster.local
+    ping quickserv-host.quickserv-subdomain.quick-test.svc.cluster.local -c1
+    /tcp-client.py
