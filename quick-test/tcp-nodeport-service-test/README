@@ -1,0 +1,76 @@
+#This sets up NodePort service. This is a good choice for pod to pod comms
+#in the same k8s cluster
+#This is mainly for external Apps to connect to pods behind a service
+#For external app comms to work you need to configure the gateway for service IP destination
+#to be the IP of the worker node hosting the Pod for UDP and TCP
+#If the connection is TCP, you can provide the IP of the master node as the gateway too
+#
+#Observation: Connection setup time tends to be long for externaly josted apps
+#For this reason and also management of these routing rules automatically
+#we prefer to go with Loadbalancer, which is discussed in loadbalancer directory
+
+#Setup
+  kubectl apply -f alpine-pyserver-deployment.yaml
+  kubectl apply -f alpine-pyserv-service-np.yaml
+  kubectl apply -f alpine-pyclient-deployment.yaml
+
+#Verification
+  kubectl get pods -n quick-test -o wide
+  kubectl describe svc alpine-pyserv -n quick-test
+
+  # login to tcp client container
+    kubectl exec -it apline-pyc-deployment-<pod-hash> -n quick-test -- bash
+    nslookup alpine-pyserv
+    #Server:		10.96.0.10
+    #Address:	10.96.0.10:53
+    #** server can't find alpine-pyserv.cluster.local: NXDOMAIN
+    #** server can't find alpine-pyserv.cluster.local: NXDOMAIN
+    #Name:	alpine-pyserv.quick-test.svc.cluster.local
+    #Address: 10.96.0.100
+    #** server can't find alpine-pyserv.svc.cluster.local: NXDOMAIN
+    #** server can't find alpine-pyserv.svc.cluster.local: NXDOMAIN
+    ./tcp-client.py
+    #7000
+    #alpine-pyserv
+    #connecting to alpine-pyserv port 7000
+    #sending "This is the message.  It will be repeated."
+    #received "This is the mess"
+    #received "age.  It will be"
+    #received " repeated."
+    #closing socket
+  # iptable entries on the worker node and port mapping and nat rules
+    kubectl get pods -n quick-test -o wide
+    #NAME                                     READY   STATUS    RESTARTS   AGE   IP            NODE           NOMINATED NODE   READINESS GATES
+    #apline-pys-deployment-655d7f9c77-6df8g   1/1     Running   0          7s    10.244.1.15   k8s-worker-1   <none>           <none>
+    kubectl describe svc alpine-pyserv -n quick-test
+    #Name:                     alpine-pyserv
+    #Namespace:                quick-test
+    #Labels:                   <none>
+    #Annotations:              kubectl.kubernetes.io/last-applied-configuration:
+    #                            {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"alpine-pyserv","namespace":"quick-test"},"spec":{"clusterIP":"10....
+    #Selector:                 app=alpserv-app
+    #Type:                     NodePort
+    #IP:                       10.96.0.100
+    #Port:                     <unset>  7000/TCP
+    #TargetPort:               5000/TCP
+    #NodePort:                 <unset>  32390/TCP
+    #Endpoints:                10.244.1.15:5000
+    #Session Affinity:         None
+    #External Traffic Policy:  Cluster
+    #Events:                   <none>
+
+    iptables -S -t nat | grep 32390
+    #-A KUBE-NODEPORTS -p tcp -m comment --comment "quick-test/alpine-pyserv:" -m tcp --dport 32390 -j KUBE-MARK-MASQ
+    #-A KUBE-NODEPORTS -p tcp -m comment --comment "quick-test/alpine-pyserv:" -m tcp --dport 32390 -j KUBE-SVC-LP7RGGFJHMX3QXWB
+    iptables -S -t nat | grep KUBE-NODEPORTS
+    #-N KUBE-NODEPORTS
+    #-A KUBE-NODEPORTS -p tcp -m comment --comment "quick-test/alpine-pyserv:" -m tcp --dport 32390 -j KUBE-MARK-MASQ
+    #-A KUBE-NODEPORTS -p tcp -m comment --comment "quick-test/alpine-pyserv:" -m tcp --dport 32390 -j KUBE-SVC-LP7RGGFJHMX3QXWB
+    #-A KUBE-SERVICES -m comment --comment "kubernetes service nodeports; NOTE: this must be the last rule in this chain" -m addrtype --dst-type LOCAL -j KUBE-NODEPORTS
+    iptables -S -t nat | grep 5000
+    #-A KUBE-SEP-DZYTPQWCGMRQCVNX -p tcp -m tcp -j DNAT --to-destination 10.244.1.15:5000
+    iptables -S -t nat | grep 7000
+    #-A KUBE-SERVICES ! -s 10.244.0.0/16 -d 10.96.0.100/32 -p tcp -m comment --comment "quick-test/alpine-pyserv: cluster IP" -m tcp --dport 7000 -j KUBE-MARK-MASQ
+    #-A KUBE-SERVICES -d 10.96.0.100/32 -p tcp -m comment --comment "quick-test/alpine-pyserv: cluster IP" -m tcp --dport 7000 -j KUBE-SVC-LP7RGGFJHMX3QXWB
+    #-A KUBE-SVC-LP7RGGFJHMX3QXWB -j KUBE-SEP-DZYTPQWCGMRQCVNX
+    #-A KUBE-SEP-DZYTPQWCGMRQCVNX -p tcp -m tcp -j DNAT --to-destination 10.244.1.15:5000

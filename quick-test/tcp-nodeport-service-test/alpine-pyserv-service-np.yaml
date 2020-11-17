@@ -1,0 +1,23 @@
+#Node Port
+#Works for pod within cluster as usual
+#Packets with destination IP as service IP and gateway as masternode IP or worker node IP both work for TCP
+#Packets with destination IP as service IP and gateway as hosting worker node IP both works for UDP
+#tested with syslog from outside the cluster
+#All options were slow in connecting
+apiVersion: v1
+kind: Service
+metadata:
+  name: alpine-pyserv
+  namespace: quick-test
+spec:
+  type: NodePort
+  clusterIP: 10.96.0.100 #This is optional. Usually autoallocated. Use this only if you wish to have a specific point of entry for the client
+  selector:
+    app: alpserv-app
+  ports:
+    - protocol: TCP
+      port: 7000
+      targetPort: 5000
+      # Optional field
+      # By default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+      #nodePort: 30007
