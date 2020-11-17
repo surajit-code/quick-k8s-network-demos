@@ -1,0 +1,30 @@
+#K8S does not come with a loadbalancer out of the box
+#We will install MetalLB as our loadbalancer
+#We will run this loadbalancer in L2 mode which works through advertising ARP replies for service IPs
+#You do have the the choice of running in BGP mode which is needed in real data centers
+#To test BGP mode you will need a simple BGP system running in your cluster, you can look into Quagga for that
+
+#Loadbalancer achieves the same goal as NodePort, which is allowing external
+#apps reach our K8S hosted services, difference is that route advertisement
+#is auto handled and you do not need to go aroung configuring gateways for
+#different services
+
+#Steps for L2 mode
+  kubectl apply -f ./namespace.yaml
+  kubectl apply -f ./metallb.yaml
+  kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
+  kubectl apply -f config-l2.yaml
+
+# Note before applying the config-l2.yaml file you should check 
+# the IP of the nodes and choose an unused IP range in this file
+# as this is in L2 without BGP route advertisement, being in the
+# same subnet helps
+# You can get the IPs of the Nodes themselves by running
+  kubectl get nodes -o wide
+    #NAME           STATUS   ROLES    AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION           CONTAINER-RUNTIME
+    #k8s-master     Ready    master   2d    v1.17.4   192.168.0.100   <none>        CentOS Linux 7 (Core)   3.10.0-1127.el7.x86_64   docker://19.3.8
+    #k8s-worker-1   Ready    <none>   2d    v1.17.4   192.168.0.101   <none>        CentOS Linux 7 (Core)   3.10.0-1127.el7.x86_64   docker://19.3.8
+
+# In this case choose something like 
+# - 192.168.0.150-192.168.0.200
+# in the config-l2.yaml file

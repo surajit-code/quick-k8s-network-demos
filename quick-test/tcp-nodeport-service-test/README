@@ -7,13 +7,18 @@
 #
 #Observation: Connection setup time tends to be long for externaly josted apps
 #For this reason and also management of these routing rules automatically
-#we prefer to go with Loadbalancer, which is discussed in loadbalancer directory
+#we prefer to go with Loadbalancer, which is discussed in tcp-loadbalancer-service-test directory
 
 #Setup
   kubectl apply -f alpine-pyserver-deployment.yaml
   kubectl apply -f alpine-pyserv-service-np.yaml
   kubectl apply -f alpine-pyclient-deployment.yaml
 
+#Cleanup
+  kubectl delete -f alpine-pyserver-deployment.yaml
+  kubectl delete -f alpine-pyserv-service-np.yaml
+  kubectl delete -f alpine-pyclient-deployment.yaml
+ 
 #Verification
   kubectl get pods -n quick-test -o wide
   kubectl describe svc alpine-pyserv -n quick-test

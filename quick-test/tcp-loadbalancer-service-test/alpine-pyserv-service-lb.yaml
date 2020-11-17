@@ -1,0 +1,20 @@
+#This works container to container
+#This works k8s-master(host) to container but connection setup is slow
+#This works from external machine to container if destination IP is the IP of svc
+#and external machine has route set to k8s-master node IP as the gw but connection setup is slow
+apiVersion: v1
+kind: Service
+metadata:
+  name: alpine-pyserv
+  namespace: quick-test
+spec:
+  ports:
+    - name: my-load-balancer
+      protocol: TCP  # With LoadBalancer you can support either TCP port mapping or UDP port mapping but not both at the same time
+      port: 7000
+      targetPort: 5000
+
+  selector:
+    app: alpserv-app
+  type: LoadBalancer
+

@@ -1,0 +1,77 @@
+#Before you start trying out LoadBalancer SVC
+#Please follow the instructions in ./metallb-install/README
+#if MetalLB is not already installed in the k8s cluster
+
+Steps:
+  kubectl apply -f alpine-pyserver-deployment.yaml
+  kubectl apply -f alpine-pyserv-service-lb.yaml
+  
+  kubectl apply -f alpine-pyclient-deployment.yaml 
+
+#Clean UP:
+  kubectl delete -f alpine-pyserver-deployment.yaml
+  kubectl delete -f alpine-pyserv-service-lb.yaml
+  kubectl delete -f alpine-pyclient-deployment.yaml
+
+#Status Check:
+  kubectl get pods -n quick-test -o wide
+  #NAME                                     READY   STATUS    RESTARTS   AGE    IP            NODE           NOMINATED NODE   READINESS GATES
+  #apline-pyc-deployment-775d78497c-x94d2   1/1     Running   0          110s   10.244.1.18   k8s-worker-1   <none>           <none>
+  #apline-pys-deployment-655d7f9c77-cbxx2   1/1     Running   0          30s    10.244.1.19   k8s-worker-1   <none>           <none>
+  kubectl describe svc alpine-pyserv -n quick-test
+  #Name:                     alpine-pyserv
+  #Namespace:                quick-test
+  #Labels:                   <none>
+  #Annotations:              kubectl.kubernetes.io/last-applied-configuration:
+  #                            {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"alpine-pyserv","namespace":"quick-test"},"spec":{"ports":[{"name"...
+  #Selector:                 app=alpserv-app
+  #Type:                     LoadBalancer
+  #IP:                       10.105.236.227
+  #LoadBalancer Ingress:     192.168.0.150
+  #Port:                     my-load-balancer  7000/TCP
+  #TargetPort:               5000/TCP
+  #NodePort:                 my-load-balancer  30999/TCP
+  #Endpoints:                10.244.1.19:5000
+  #Session Affinity:         None
+  #External Traffic Policy:  Cluster
+  #Events:
+  #  Type    Reason        Age   From                Message
+  #  ----    ------        ----  ----                -------
+  #  Normal  IPAllocated   87s   metallb-controller  Assigned IP "192.168.0.150"
+  #  Normal  nodeAssigned  50s   metallb-speaker     announcing from node "k8s-worker-1"
+
+
+  # Iptables entries to support LoadBalancer
+    iptables -S -t nat | grep 192.168.0.150
+    #-A KUBE-SERVICES -d 192.168.0.150/32 -p tcp -m comment --comment "quick-test/alpine-pyserv:my-load-balancer loadbalancer IP" -m tcp --dport 7000 -j KUBE-FW-2BZYRRPLGMBOYEC4
+    iptables -S -t nat | grep KUBE-FW-2BZYRRPLGMBOYEC4
+    #-A KUBE-FW-2BZYRRPLGMBOYEC4 -m comment --comment "quick-test/alpine-pyserv:my-load-balancer loadbalancer IP" -j KUBE-SVC-2BZYRRPLGMBOYEC4
+    iptables -S -t nat | grep KUBE-SVC-2BZYRRPLGMBOYEC4
+    #-A KUBE-NODEPORTS -p tcp -m comment --comment "quick-test/alpine-pyserv:my-load-balancer" -m tcp --dport 30999 -j KUBE-SVC-2BZYRRPLGMBOYEC4
+    #-A KUBE-SERVICES -d 10.105.236.227/32 -p tcp -m comment --comment "quick-test/alpine-pyserv:my-load-balancer cluster IP" -m tcp --dport 7000 -j KUBE-SVC-2BZYRRPLGMBOYEC4
+    #-A KUBE-SVC-2BZYRRPLGMBOYEC4 -j KUBE-SEP-V36OPBHNYY6PUOOR
+    iptables -S -t nat | grep KUBE-SEP-V36OPBHNYY6PUOOR
+    #-A KUBE-SEP-V36OPBHNYY6PUOOR -s 10.244.1.19/32 -j KUBE-MARK-MASQ
+    #-A KUBE-SEP-V36OPBHNYY6PUOOR -p tcp -m tcp -j DNAT --to-destination 10.244.1.19:5000
+
+# Verification test on Pod
+# Login
+  kubectl exec -it apline-pyc-deployment-<pod-hash> -n quick-test -- bash
+    nslookup alpine-pyserv
+    #Server:		10.96.0.10
+    #Address:	10.96.0.10:53
+    #** server can't find alpine-pyserv.cluster.local: NXDOMAIN
+    #Name:	alpine-pyserv.quick-test.svc.cluster.local
+    #Address: 10.105.236.227
+    #** server can't find alpine-pyserv.svc.cluster.local: NXDOMAIN
+    #** server can't find alpine-pyserv.cluster.local: NXDOMAIN
+    #** server can't find alpine-pyserv.svc.cluster.local: NXDOMAIN
+    ./tcp-client.py
+    #7000
+    #alpine-pyserv
+    #connecting to alpine-pyserv port 7000
+    #sending "This is the message.  It will be repeated."
+    #received "This is the mess"
+    #received "age.  It will be"
+    #received " repeated."
+    #closing socket

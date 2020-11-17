@@ -1,0 +1,55 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: apline-pys-deployment
+  namespace: quick-test 
+spec:
+  selector:
+    matchLabels:
+      app: alpserv-app
+  replicas: 1 # tells deployment to run 1 pod matching the template/you can cahnge it
+  template:
+    metadata:
+      labels:
+        app: alpserv-app
+    spec:
+      containers:
+      - name: alpserver
+        image: alpine/python:1
+        imagePullPolicy: IfNotPresent
+
+        env:
+        - name: TCP_PORT
+          value: "5000"
+
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MY_POD_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+
+        stdin: true
+        tty: true
+
+        command: ["/bin/bash"]
+        args: ["-c", "/tcp-server.py"]
+        securityContext:
+          privileged: true
+
+      nodeSelector:
+        testcapability: testnode
