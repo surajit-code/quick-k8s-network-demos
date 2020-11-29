@@ -2,7 +2,7 @@
 # and as files mounted in desired location with desired filenames
 
 # Note: if configmap value changes during the life of a pod, it's change
-# will be reflected in the pod after a time
+# will be reflected in the pod after a time if it is pushed as an enviornment variable
 # if configmap is pushed as a file, the changes will not be reflected till
 # the pod is reapplied
 
